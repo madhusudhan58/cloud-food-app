@@ -1,10 +1,10 @@
 pipeline {
-
     agent any
 
     environment {
         IMAGE_NAME = "cloud-food-app"
-        CONTAINER_NAME = "cloud-food-container"
+        CONTAINER_NAME = "cloud-food-app"
+        PORT = "3000"
     }
 
     stages {
@@ -18,39 +18,55 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                bat 'docker build -t %IMAGE_NAME% .'
+                sh '''
+                    docker build -t ${IMAGE_NAME}:latest .
+                '''
             }
         }
 
         stage('Remove Old Container') {
             steps {
-                bat '''
-                docker stop %CONTAINER_NAME% || exit 0
-                docker rm %CONTAINER_NAME% || exit 0
+                sh '''
+                    docker stop ${CONTAINER_NAME} || true
+                    docker rm ${CONTAINER_NAME} || true
                 '''
             }
         }
 
         stage('Run Container') {
             steps {
-                bat '''
-                docker run -d --name %CONTAINER_NAME% -p 8085:80 %IMAGE_NAME%
+                sh '''
+                    docker run -d \
+                    --name ${CONTAINER_NAME} \
+                    -p ${PORT}:${PORT} \
+                    ${IMAGE_NAME}:latest
                 '''
             }
         }
 
+        stage('Verify Container') {
+            steps {
+                sh '''
+                    docker ps
+                '''
+            }
+        }
     }
 
     post {
-
         success {
-            echo 'Deployment Successful'
+            echo 'Application deployed successfully!'
         }
 
         failure {
             echo 'Deployment Failed'
         }
 
+        always {
+            sh '''
+                docker images
+                docker ps -a
+            '''
+        }
     }
-
 }
